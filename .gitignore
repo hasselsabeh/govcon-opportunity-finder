@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local API responses (real data lives in DynamoDB, not Git)
+data/
