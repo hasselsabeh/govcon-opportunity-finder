@@ -4,8 +4,8 @@
     transform() -> keep only biddable, still-open ones and reshape them into
                    the fields a business owner needs
 
-Week 2 moves these same functions into AWS Lambda and adds a load() step
-that writes to DynamoDB.
+lambda_function.py reuses these functions in AWS Lambda and adds the load()
+step that writes to DynamoDB.
 
 Usage:
     python pipeline.py            # calls SAM.gov (one request per NAICS code)
@@ -18,7 +18,6 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
 
 URL = "https://api.sam.gov/opportunities/v2/search"
 DAYS_BACK = 7
@@ -46,12 +45,12 @@ RAW_FILE = Path("data/raw_it.json")
 CLEAN_FILE = Path("data/opportunities.json")
 
 
-def extract(api_key):
-    """Fetch every opportunity posted in the last DAYS_BACK days for each IT NAICS code."""
+def extract(api_key, days_back=DAYS_BACK):
+    """Fetch every opportunity posted in the last days_back days for each IT NAICS code."""
     today = date.today()
     base_params = {
         "api_key": api_key,
-        "postedFrom": (today - timedelta(days=DAYS_BACK)).strftime("%m/%d/%Y"),
+        "postedFrom": (today - timedelta(days=days_back)).strftime("%m/%d/%Y"),
         "postedTo": today.strftime("%m/%d/%Y"),
         "limit": PAGE_SIZE,
     }
@@ -68,7 +67,7 @@ def extract(api_key):
             requests_made += 1
             if response.status_code != 200:
                 # Print only the body. The URL contains the key.
-                sys.exit(f"SAM.gov returned {response.status_code}: {response.text[:300]}")
+                raise RuntimeError(f"SAM.gov returned {response.status_code}: {response.text[:300]}")
 
             body = response.json()
             page = body.get("opportunitiesData", [])
@@ -163,6 +162,8 @@ def main():
         raw = json.loads(RAW_FILE.read_text())
         print(f"Offline mode: loaded {len(raw)} raw records from {RAW_FILE}")
     else:
+        from dotenv import load_dotenv  # local-only dependency; Lambda doesn't need it
+
         load_dotenv()
         api_key = os.environ.get("SAM_API_KEY", "").strip()
         if not api_key:
