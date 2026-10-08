@@ -7,14 +7,14 @@ cd "$(dirname "$0")"
 rm -rf build lambda.zip
 mkdir build
 
-.venv/bin/pip install requests \
+.venv/bin/pip install requests "anthropic[bedrock]" \
   --target build \
   --platform manylinux2014_aarch64 \
   --python-version 3.12 \
   --only-binary=:all: \
   --quiet
 
-cp lambda_function.py pipeline.py build/
+cp lambda_function.py pipeline.py enrich.py company_profile.md build/
 (cd build && zip -rq ../lambda.zip . -x '*.pyc' -x '__pycache__/*')
 
 echo "Built lambda.zip ($(du -h lambda.zip | cut -f1))"
